@@ -40,6 +40,37 @@ def execute_emulator(): # Executa o emulador selecionado
             
 def button_effect(button, border_color, border_width): # Adiciona o efeito de borda ao botão em hover
     button.configure(border_color=border_color, border_width=border_width)
+
+def read_gamepad():
+    global last_a_pressed
+
+    if pygame.joystick.get_count() > 0:
+        pygame.event.pump()
+
+        h_axis = joystick.get_axis(0)
+        v_axis = joystick.get_axis(1)
+        
+        if abs(h_axis) < DEADZONE:
+            h_axis = 0
+
+        if abs(v_axis) < DEADZONE:
+            v_axis = 0
+        
+        if h_axis != 0 or v_axis != 0: # Move o mouse
+            pyautogui.moveRel(int(h_axis * SPEED), int(v_axis * SPEED))
+
+        a_pressed = joystick.get_button(0) # Botão A: clique apenas quando apertar, não enquanto segurar
+
+        if a_pressed and not last_a_pressed:
+            pyautogui.click()
+
+        last_a_pressed = a_pressed
+
+    app.after(10, read_gamepad) # chama novamente depois de 10ms
+
+def close_app():
+    pygame.quit()
+    app.destroy()
 # --- Functions ---
 
 # --- Images ---
@@ -80,7 +111,8 @@ emulators = [
 # inicialização das variáveis  
 index = 0
 DEADZONE = 0.1
-SPEED = 15
+SPEED = 50
+last_a_pressed = False
 
 # Inicialização do Pygame e do CustomTkinter
 pygame.init()
@@ -89,11 +121,10 @@ app = CTK.CTk()
 
 if pygame.joystick.get_count() == 0: # Verifica se há um controle conectado
     print("No gamepad found!")
-    exit()
-
-joystick = pygame.joystick.Joystick(0)
-joystick.init()
-print(f"Controller: {joystick.get_name()} connected.")
+else:
+    joystick = pygame.joystick.Joystick(0)
+    joystick.init()
+    print(f"Controller: {joystick.get_name()} connected.")
 
 # --- Interface ---
 CTK.set_appearance_mode("dark") # Define o modo de aparência para "dark"
@@ -139,7 +170,7 @@ exit_button = CTK.CTkButton( # Botão de sair
     border_color="black",
     fg_color="#DB0C0C",
     hover_color="#FF0000",
-    command=app.destroy)
+    command=close_app)
 
 exit_button.place(x=app.winfo_screenwidth() - 80, y=20)
 exit_button.bind("<Enter>", lambda e: button_effect(exit_button, "#FF0000", 4))
@@ -148,20 +179,7 @@ exit_button.bind("<Leave>", lambda e: button_effect(exit_button, "black", 2))
 
 # Inicializa a interface
 update_carousel(index)
+app.protocol("WM_DELETE_WINDOW", close_app)
+read_gamepad()
 app.mainloop()
-
-while True:
-    pygame.event.pump()
-
-    h_axis = joystick.get_axis(0) # Eixo horizontal (0)
-    v_axis = joystick.get_axis(1) # Eixo vertical (1)
-
-    if abs(h_axis) > DEADZONE or abs(v_axis) > DEADZONE: # Verifica se o movimento do joystick é maior que a DEADZONE
-        pyautogui.moveRel(h_axis * SPEED, v_axis * SPEED)
-
-    if joystick.get_button(0): # Verifica se o botão A foi pressionado (0)
-        pyautogui.click()
-        pygame.time.wait(200) # Evitar clique duplo
-    
-    pygame.time.delay(10) # Delay para atrasar o loop
 # --- App ---
